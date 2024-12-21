@@ -1,0 +1,67 @@
+#version: "3"
+services:
+  # MySQL Database
+  database:
+    image: mysql:5.6
+    build:
+      context: ./database
+      dockerfile: Dockerfile.db
+    expose:
+      - "3306" 
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/1.sql
+    networks:
+      - mynetwork
+
+  # PhpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:4.9
+    ports:
+      - "8080:80"  
+    networks:
+      - mynetwork
+    environment:
+      PMA_HOST: database
+      PMA_USER: test
+      PMA_PASSWORD: test
+
+  # Node.js Back-End API
+  node:
+    build:
+      context: ./server
+      dockerfile: Dockerfile.node
+    environment:
+      DB_HOST: database  # Corrected DB_HOST to match the service name
+      DB_USER: test
+      DB_PASSWORD: test
+      DB_NAME: mydatabase
+    ports:
+      - "3000:3000"  
+    #volumes:
+    #  - ./my-nodejs-server:/server
+    networks:
+      - mynetwork
+    depends_on:
+      - database
+
+  # Front-End (React with Nginx)
+  nginx:
+    build:
+      context: ./client
+      dockerfile: Dockerfile.nginx
+    environment:
+      REACT_APP_BACKEND_URL: http://localhost:3000
+    ports:
+      - "80:80" 
+    networks:
+      - mynetwork
+    depends_on:
+      - node
+
+networks:
+  mynetwork:
+    driver: bridge
+
+volumes:
+  mysql-data:
+  my-nodejs-server:
